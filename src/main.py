@@ -658,7 +658,7 @@ def VerifyUser(pUserID = 0, DevAddress = 0, Group_ID = 0, Num = 0):
             break
         if RSP.bData[0] == XG_ERR_SUCCESS:
             pID = RSP.bData[1] + (RSP.bData[2] << 8) + (RSP.bData[3] << 16) + (RSP.bData[3] << 24)
-            print("The User: % is detected" %pID)
+            print("The User: % is detected" % (pID))
             return XG_ERR_SUCCESS
         elif RSP.bData[0] == XG_INPUT_FINGER:
             print("Please put your finger")
@@ -778,7 +778,7 @@ def GetIDEnroll(UserID, DevAddress = 0):
     if ret == XG_ERR_SUCCESS:
         if RSP.bData[0] == XG_ERR_SUCCESS:
             template_num = RSP.bData[1]
-            print("The ID exist with % template" %template_num)
+            print("The ID exist with % template" % (template_num))
             return XG_ERR_SUCCESS
         elif RSP.bData[0] == XG_ERR_INVALID_ID:
             print("Invalid ID")
