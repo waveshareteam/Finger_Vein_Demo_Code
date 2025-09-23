@@ -166,6 +166,8 @@ def UartSendCmd():
     #    ser.write(cmd[i])
     ser.write(cmd)
     #print(cmd)
+    global CMD
+    CMD = Cmd_Packet() #Reset the CMD packet
     return Rx_Cmd()
 
 def Rx_CMD_Process(flag):
@@ -526,26 +528,25 @@ def RebootDev(DevAddress = 0):
             return XG_ERR_SUCCESS
     return XG_ERR_FAIL
 
-'''
+
 #*********************************************
 #Function: Check fingerprint status
+#DevAddress: Device ID, default 0
 #Return:
 #   1 : Finger detected
 #   0 : No finger detected or error
 #*********************************************
 def CheckFinger():
-    ret = 0
-    bData = [0] * 16
-    SendPack(XG_CMD_CHECK_FINGER, None, 0)
-    gUartByte = 0  # Prepare to receive data
-    ret = RecvPack(None, bData, 1000)
+    CMD.bCmd
+    ret = UartSendCmd()
     if ret == XG_ERR_SUCCESS:
-        if bData[0] == XG_ERR_SUCCESS:
-            return bData[1]  # 1: finger detected, 0: no finger
-        else:
-            return 0
+        if RSP.bData[0] == XG_ERR_SUCCESS:
+            if RSP.bDataP[1] == 1:
+                print("Finger is detected properly")
+                return RSP.bData[1]  # 1: finger detected, 0: no finger
+    print("Finger isn't detected or do not put properly, please try it again")
     return 0
-
+'''
 #*********************************************
 #Function: GEt empty ID, which is an unregistered ID
 #pUserID: Array to receive the empty ID that can be registered
@@ -842,8 +843,8 @@ def main():
     Check_Password('1234459069jbnskdfwljfwjewer')
     Check_Password('waveshare075')
     Check_Password('waveshare0755')
-    RebootDev()
-    time.sleep(2)
+    #RebootDev()
+    CheckFinger()
     GetDevSetting()
     CloseConnectDev()
     #time.sleep(2)
