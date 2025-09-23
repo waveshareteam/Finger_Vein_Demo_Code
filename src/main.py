@@ -149,7 +149,7 @@ RSP = Rsp_Packet()
 
 def UartSendCmd(timeout = 3):
     Checksum = 0x00
-    global CMD
+    global CMD, cmd
     cmd[0] = (CMD.wPrefix & 0xFF)         # Low byte of wPrefix
     cmd[1] = (CMD.wPrefix >> 8) & 0xFF    # High byte of wPrefix
     cmd[2] = CMD.bAddress
