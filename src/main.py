@@ -836,6 +836,7 @@ def main():
     #SET_Password('waveshare0755')
     Check_Password('123445906')
     RebootDev()
+    time.sleep(2)
     GetDevSetting()
     CloseConnectDev()
     #time.sleep(2)
