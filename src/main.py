@@ -593,172 +593,134 @@ def CleanAllUser(DevAddress = 0):
     print("Fail to clear")
     return XG_ERR_FAIL
 
-'''
+
 #*********************************************
 #Function: Get empty ID, which is an unregistered ID
-#pUserID: Array to receive the empty ID that can be registered
+#DevAddress: Device ID, default 0
+#StartID: The Start ID to check the empty ID that can be registered
+#EndID: The End ID to check the empty ID that can be registered
 #Return:
 #   XG_ERR_SUCCESS : Get Successful
 #   XG_ERR_FAIL : Get Failed
 #   XG_ERR_NO_EMPTY_ID : No empty ID available
 #*********************************************  
-def GetEmptyID(pUserID):
-    ret = 0
-    bData = [0] * 16
-    SendPack(XG_CMD_GET_EMPTY_ID, None, 0)
-    gUartByte = 0  # Prepare to receive data
-    ret = RecvPack(None, bData, 1000)
+def GetEmptyID(StartID = 0, EndID = 100, DevAddress = 0):
+    CMD.bCmd = XG_CMD_GET_EMPTY_ID
+    CMD.bAddress = 0
+    #CMD.bDataLen = 0x08
+    CMD.bData[0] = StartID & 0xFF
+    CMD.bData[1] = (StartID >> 8) & 0xFF
+    CMD.bData[2] = (StartID >> 16) & 0xFF
+    CMD.bData[3] = (StartID >> 24) & 0xFF
+    CMD.bData[4] = EndID & 0xFF
+    CMD.bData[5] = (EndID >> 8) & 0xFF
+    CMD.bData[6] = (EndID >> 16) & 0xFF
+    CMD.bData[7] = (EndID >> 24) & 0xFF
+    ret = UartSendCmd()
     if ret == XG_ERR_SUCCESS:
-        if bData[0] == XG_ERR_SUCCESS:
-            if pUserID is not None:
-                pUserID = bData[1] + (bData[2] << 8)
-            return XG_ERR_SUCCESS
-        else:
-            return bData[1]
+        if RSP.bData[0] == XG_ERR_SUCCESS:
+            pUserID = RSP.bData[1] + (RSP.bData[2] << 8) + (RSP.bData[2] << 16) + (RSP.bData[4] << 24)
+            print("The Empty ID is ", pUserID)
+            return pUserID
+        elif RSP.bData[0] == XG_ERR_NO_NULL_ID:
+            print("The database is fulled, has no empty ID")
+            return XG_ERR_NO_NULL_ID
+    print("Fail to get Empty ID")
     return XG_ERR_FAIL
 
 #*********************************************
 #Function：Verify user fingerprint and get the returned user ID
-#pUserID: Array to receive the verified user ID
+#DevAddress: Device ID, default 0
+#pUserID: Array to receive the verified user ID, if keep default the ID 0, 
+#         it will verity in 1:N mode., otherwise, it verity in 1:1 mode
+#Group_ID： Group ID, ID = 0 means do not create group
+#Num: The number of ID which is going to verity
 #Return:
 #   XG_ERR_SUCCESS : Verification Successful
 #   XG_ERR_FAIL : Verification Failed
 #   XG_ERR_NO_USER : No such user
 #*********************************************
-def VerifyUser(pUserID):
-    ret = 0
-    bData = [0] * 16
-    CardNo = 0
-
+def VerifyUser(pUserID = 0, DevAddress = 0, Group_ID = 0, Num = 0):
+    CMD.bCmd = XG_CMD_VERIFY
+    CMD.bAddress = DevAddress
+    CMD.bDataLen = 0x04
     if pUserID is not None:
-        bData[0] = pUserID & 0xFF
-        bData[1] = (pUserID >> 8) & 0xFF
-        bData[2] = 0
-        bData[3] = 0 
-        bData[4] = 0 #0: no card
-        bData[5] = 0 #0: no user verfication, >0: continue to verify from UserID
-        bData[6] = CardNo & 0xFF # Can carry card number for 1:1 verification
-        bData[7] = (CardNo >> 8) & 0xFF
-        bData[8] = (CardNo >> 16) & 0xFF
-        bData[9] = (CardNo >> 24) & 0xFF
-    
-    SendPack(XG_CMD_VERIFY_USER, bData, 10)
-    gUartByte = 0  # Prepare to receive data
+        RSP.bData[0] = pUserID & 0xFF
+        RSP.bData[1] = (pUserID >> 8) & 0xFF
+        RSP.bData[2] = (pUserID >> 18) & 0xFF
+        RSP.bData[3] = (pUserID >> 24) & 0xFF 
+        RSP.bData[4] = Group_ID
+        RSP.bData[5] = Num #The number of ID to continue verity
+    ret = UartSendCmd()
     while True:
-        ret = RecvPack(None, bData, 6000)
         if ret != XG_ERR_SUCCESS:
             print("VerifyUser RecvPack error:", ret)
             break
-        if bData[0] != XG_ERR_SUCCESS:
-            if pUserID is not None:
-                pUserID = bData[1] + (bData[2] << 8)
-            break
-        elif bData[0] == XG_INPUT_FINGER:
+        if RSP.bData[0] == XG_ERR_SUCCESS:
+            pID = RSP.bData[1] + (RSP.bData[2] << 8) + (RSP.bData[3] << 16) + (RSP.bData[3] << 24)
+            print("The User: % is detected" %pID)
+            return XG_ERR_SUCCESS
+        elif RSP.bData[0] == XG_INPUT_FINGER:
+            print("Please put your finger")
             continue
-        elif bData[0] == XG_RELEASE_FINGER:
+        elif RSP.bData[0] == XG_RELEASE_FINGER:
             print("Please release your finger")
             continue
         else:
-            ret = bData[1]
+            ret = RSP.bData[1]
             if ret == XG_ERR_NO_VEIN:
                 print("No finger vein detected, please try again")
             else:
                 print("Verification error:", ret)
             break
-    return ret
-
-#*********************************************
-#Function: Extended user fingerprint verfication, this command ony needs to return once
-#pUserID: Array to receive the verified user ID
-#Return:
-#   XG_ERR_SUCCESS : Verification Successful
-#   XG_ERR_No_VEIN: No finger vein detected
-#*********************************************
-def VerifyUserEXT(pUserID):
-    ret = 0
-    bData = [0] * 16
-    CardNo = 0
-
-    if pUserID is not None:
-        bData[0] = pUserID & 0xFF
-        bData[1] = (pUserID >> 8) & 0xFF
-        bData[2] = 0
-        bData[3] = 0 
-        bData[4] = 0 #0: no card
-        bData[5] = 0 #0: no user verfication, >0: continue to verify from UserID
-        bData[6] = CardNo & 0xFF # Can carry card number for 1:1 verification
-        bData[7] = (CardNo >> 8) & 0xFF
-        bData[8] = (CardNo >> 16) & 0xFF
-        bData[9] = (CardNo >> 24) & 0xFF
-    
-    #XG_CMD_VERIFY_USER_EXT command does not need t prompt the user to lift the finger
-    SendPack(XG_CMD_VERIFY_USER_EXT, bData, 10)
-    gUartByte = 0  # Prepare to receive data
-    ret = RecvPack(None, bData, 6000)
-    if ret == XG_ERR_SUCCESS:
-        if bData[0] == XG_ERR_SUCCESS:
-            print
-            if pUserID is not None:
-                pUserID = bData[1] + (bData[2] << 8)
-            else:
-                ret = bData[1]
-                if ret == XG_ERR_NO_VEIN:
-                    print("No finger vein detected, please try again")
-                else:
-                    print("Verification error:", ret)         
+        ret = Rx_Cmd()
     return ret
 
 #*********************************************
 #Function: Register a new user fingerprint
+#DevAddress: Device ID, default 0
 #UserID: User ID to be registered
 #Return:
 #   XG_ERR_SUCCESS : Registration Successful
 #   XG_ERR_FAIL : Registration Failed
 #   XG_ERR_USER_EXIST : User ID already exists
+#   XG_ERR_DUPLICATION_ID: Duplicate ID
+#   XG_ERR_NO_SAME_FINGER: The finger is not the same
+#   XG_ERR_NO_VEIN: No finger is detected
 #*********************************************
-def EnrollUser(UserID):
-    ret = 0
-    bData = [0] * 16
-    bData[0] = UserID & 0xFF
-    bData[1] = (UserID >> 8) & 0xFF
-    bData[2] = 0
-    bData[3] = 0
-    bData[4] = 0
-    bData[5] = 3 #Number of successful collections, as long as 3 successful collections are registered successfully.
-    bData[10] = 10 #Number of automatic retries after each succesfful collection.
-    SendPack(XG_CMD_ENROLL, bData, 12)
-    gUartByte = 0  # Prepare to receive data
+def EnrollUser(UserID, DevAddress = 0, Group_ID = 1, Temp_Num = 3):
+    CMD.bCmd = XG_CMD_ENROLL
+    CMD.bAddress = DevAddress
+    CMD.bDataLen = 0x04
+    CMD.bData[0] = UserID & 0xFF
+    CMD.bData[1] = (UserID >> 8) & 0xFF
+    CMD.bData[2] = (UserID >> 16) & 0xFF
+    CMD.bData[3] = (UserID >> 24) & 0xFF
+    CMD.bData[4] = Group_ID
+    CMD.bData[5] = Temp_Num #Number of successful collections, as long as 3 successful collections are registered successfully.
+    ret = UartSendCmd(timeout = 6)
     while True:
-        ret = RecvPack(None, bData, 6000)
         if ret != XG_ERR_SUCCESS:
             print("RegUser RecvPack error:", ret)
             break
-        if bData[0] != XG_ERR_SUCCESS:
-            print("Registration failed")
-            break
-        if bData[0] == XG_ERR_SUCCESS:
+        if RSP.bData[0] == XG_ERR_SUCCESS:
             print("Registration successful")
             break
-        elif bData[0] == XG_INPUT_FINGER:
-            #bData[1]: number of successful collections so far
-            if bData[1] ==  0:
-                print ("Please place your finger again")
-        elif bData[0] == XG_RELEASE_FINGER:
+        elif RSP.bData[0] == XG_INPUT_FINGER:
+            print ("Please place your finger again")
+            ret = Rx_Cmd()
+        elif RSP.bData[0] == XG_RELEASE_FINGER:
             print("Please release your finger")
-            time.sleep(200)
-            #bData[1]: Number of collections
-            #bData[2]: Number of successful collections, need to be +1
-            if bData[2] < 2 and bData[1] < 10: # if the  last collection fails after successful verificatio, no further prompt is needed
-                print("Please place your finger again")
+            ret = Rx_Cmd()
         else:
-            ret = bData[1]
+            ret = RSP.bData[1]
             if ret == XG_ERR_INVALID_ID:
                 print("Invalid User ID")
                 break
             elif ret == XG_ERR_NOT_ENOUGH:
                 print("The memory if full, please delete some users")
                 break
-            elif ret == XG_ERR_TIMEOUT:
+            elif ret == XG_ERR_TIME_OUT:
                 print("Operation timeout, please try again")
                 break
             elif ret == XG_ERR_DUPLICATION_ID:
@@ -776,54 +738,54 @@ def EnrollUser(UserID):
 
 #*********************************************
 #Function: Get registered information
+#DevAddress: Device ID, default 0
 #pUserNum: Array to receive the number of registered users
 #pUserMax: Maximum number of users that can be registered
 #Return:
 #   XG_ERR_SUCCESS : Get Successful
 #   XG_ERR_FAIL : Get Failed
 #*********************************************
-def GetEnrollInfo(pUserNum, pUserMax):
-    ret = 0
-    bData = [0] * 16
-    SendPack(XG_CMD_GET_USER_INFO, None, 0)
-    gUartByte = 0  # Prepare to receive data
-    ret = RecvPack(None, bData, 1000)
+def GetEnrollInfo(DevAddress = 0):
+    CMD.bCmd = XG_CMD_GET_ENROLL_INFO
+    CMD.bAddress = DevAddress
+    ret = UartSendCmd()
     if ret == XG_ERR_SUCCESS:
-        if bData[0] == XG_ERR_SUCCESS:
-            if pUserNum is not None:
-                pUserNum = bData[1] + (bData[2] << 8)
-            if pUserMax is not None:
-                pUserMax = bData[9] + (bData[10] << 8)
+        if RSP.bData[0] == XG_ERR_SUCCESS:
+            pUserNum = RSP.bData[1] + (RSP.bData[2] << 8) + (RSP.bData[2] << 16) + (RSP.bData[3] << 24)
+            pUserMax = RSP.bData[9] + (RSP.bData[10] << 8) + (RSP.bData[11] << 16) + (RSP.bData[12] << 24)
+            print("The registed users:", pUserNum, "The maximum users:", pUserMax)
             return XG_ERR_SUCCESS
-        else:
-            return bData[1]
+    print("Fail to get informatiom")
     return XG_ERR_FAIL
 
 #*********************************************
 #Function: Get registration information for a specified user ID
+#DevAddress: Device ID, default 0
 #UserID: User ID to query
 #Return:
-#   0: The user is not registered
-#   >0 : The user is not registered
+#XG_ERR_SUCCESS: The user information is get successfully
+#XG_ERR_INVALID_ID: The user ID is invalid
+#XG_ERR_FAIL: Fail to get user information
 #*********************************************
-def GetIDEnroll(UserID):
-    ret = 0
-    bData = [0] * 16
-    bData[0] = UserID & 0xFF
-    bData[1] = (UserID >> 8) & 0xFF
-    SendPack(XG_CMD_IS_USER_EXIST, bData, 2)
-    gUartByte = 0  # Prepare to receive data
-    ret = RecvPack(None, bData, 1000)
+def GetIDEnroll(UserID, DevAddress = 0):
+    CMD.bCmd = XG_CMD_GET_EMPTY_ID
+    CMD.bDataLen = 0x04
+    CMD.bData[0] = UserID & 0xFF
+    CMD.bData[1] = (UserID >> 8) & 0xFF
+    CMD.bData[2] = (UserID >> 16) & 0xFF
+    CMD.bData[3] = (UserID >> 24) & 0xFF
+    ret = UartSendCmd()
     if ret == XG_ERR_SUCCESS:
-        if bData[0] == XG_ERR_SUCCESS:
-            return bData[1]  # 0: not exist, >0: exist
-        else:
-            return 0
-    return 0
+        if RSP.bData[0] == XG_ERR_SUCCESS:
+            template_num = RSP.bData[1]
+            print("The ID exist with % template" %template_num)
+            return XG_ERR_SUCCESS
+        elif RSP.bData[0] == XG_ERR_INVALID_ID:
+            print("Invalid ID")
+            return XG_ERR_INVALID_ID
+    return XG_ERR_FAIL
 
 
-
-'''
 def main():
     # Testing Connection
     print("Testing device connection...")
@@ -844,6 +806,11 @@ def main():
     Check_Password('1234459069jbnskdfwljfwjewer')
     Check_Password('waveshare075')
     Check_Password('waveshare0755')
+    GetEnrollInfo()
+    GetIDEnroll(1)
+    GetEmptyID()
+    EnrollUser(GetEmptyID())
+    VerifyUser(pUserID=0)
     #RebootDev()
     CheckFinger()
     GetDevSetting()
