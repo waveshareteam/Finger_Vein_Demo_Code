@@ -149,6 +149,7 @@ RSP = Rsp_Packet()
 
 def UartSendCmd():
     Checksum = 0x00
+    global CMD
     cmd[0] = (CMD.wPrefix & 0xFF)         # Low byte of wPrefix
     cmd[1] = (CMD.wPrefix >> 8) & 0xFF    # High byte of wPrefix
     cmd[2] = CMD.bAddress
@@ -166,7 +167,7 @@ def UartSendCmd():
     #    ser.write(cmd[i])
     ser.write(cmd)
     #print(cmd)
-    #global CMD
+    
     CMD = Cmd_Packet() #Reset the CMD packet
     return Rx_Cmd()
 
@@ -546,9 +547,37 @@ def CheckFinger():
                 return RSP.bData[1]  # 1: finger detected, 0: no finger
     print("Finger isn't detected or do not put properly, please try it again")
     return 0
+
+#*********************************************
+#Function: Delete the certian User
+#DevAddress: Device ID, default 0
+#UserID: The ID of user going to be deleted
+#Return:
+#XG_ERR_SUCCESS: deleted successfully
+#XG_ERR_FAIL: deleted fail
+#XG_ERR_INVALID_ID : Invalid ID or empty ID
+#*********************************************
+def CleanUser(UserID, DevAddress = 0):
+    CMD.bCmd = XG_CMD_CLEAR_ENROLL
+    CMD.bAddress = DevAddress
+    CMD.bDataLen = 0x04
+    CMD.bData[0] = UserID & 0xFF
+    CMD.bData[1] = (UserID >> 8) & 0xFF
+    CMD.bData[2] = (UserID >> 16) & 0xFF
+    CMD.bData[3] = (UserID >> 24) & 0xFF
+    ret = UartSendCmd()
+    if ret == XG_ERR_SUCCESS:
+        if RSP.bData[0] == XG_ERR_SUCCESS:
+            print("User is deleted successfully")
+            return XG_ERR_SUCCESS
+        elif RSP.bData[0] == XG_ERR_INVALID_ID or RSP.bData[0] == XG_ERR_EMPTY_ID:
+            print("Invalid ID or the ID is not exist, please try again with correct ID")
+            return XG_ERR_INVALID_ID
+    print("Faild to Delected User")
+    return XG_ERR_FAIL
 '''
 #*********************************************
-#Function: GEt empty ID, which is an unregistered ID
+#Function: Get empty ID, which is an unregistered ID
 #pUserID: Array to receive the empty ID that can be registered
 #Return:
 #   XG_ERR_SUCCESS : Get Successful
