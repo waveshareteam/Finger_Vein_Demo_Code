@@ -166,7 +166,7 @@ def UartSendCmd():
     #    ser.write(cmd[i])
     ser.write(cmd)
     #print(cmd)
-    global CMD
+    #global CMD
     CMD = Cmd_Packet() #Reset the CMD packet
     return Rx_Cmd()
 
