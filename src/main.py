@@ -504,6 +504,9 @@ def Check_Password(password, DevAddress = 0):
         if RSP.bData[0] == XG_ERR_SUCCESS:
             print("The password is check successful, please use new password to open the device again")
             return XG_ERR_SUCCESS
+        else:
+            print("The Password is wrong, please check it again")
+            return XG_ERR_FAIL
     return XG_ERR_FAIL
 
 #*********************************************
@@ -835,6 +838,10 @@ def main():
     #SetDevSameFingerCheck(0)
     #SET_Password('waveshare0755')
     Check_Password('123445906')
+    Check_Password('12344')
+    Check_Password('1234459069jbnskdfwljfwjewer')
+    Check_Password('waveshare075')
+    Check_Password('waveshare0755')
     RebootDev()
     time.sleep(2)
     GetDevSetting()
