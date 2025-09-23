@@ -167,7 +167,7 @@ def UartSendCmd(timeout = 3):
     #    ser.write(cmd[i])
     ser.write(cmd)
     #print(cmd)
-    
+    cmd = [0x00] * 24
     CMD = Cmd_Packet() #Reset the CMD packet
     return Rx_Cmd(timeout)
 
