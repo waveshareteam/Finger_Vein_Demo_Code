@@ -834,6 +834,8 @@ def main():
     #SetDevDupCheck(0)
     #SetDevSameFingerCheck(0)
     #SET_Password('waveshare0755')
+    Check_Password('123445906')
+    RebootDev()
     GetDevSetting()
     CloseConnectDev()
     #time.sleep(2)
