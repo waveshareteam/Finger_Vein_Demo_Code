@@ -169,7 +169,7 @@ def UartSendCmd(timeout = 3):
     #print(cmd)
     
     CMD = Cmd_Packet() #Reset the CMD packet
-    return Rx_Cmd(Timeout = timeout)
+    return Rx_Cmd(timeout)
 
 def Rx_CMD_Process(flag):
     checksum = 0
