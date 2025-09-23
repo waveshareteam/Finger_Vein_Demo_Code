@@ -147,7 +147,7 @@ RSP = Rsp_Packet()
 #Len: Length of data to be sent
 #Return: Number of bytes sent
 
-def UartSendCmd():
+def UartSendCmd(timeout = 3):
     Checksum = 0x00
     global CMD
     cmd[0] = (CMD.wPrefix & 0xFF)         # Low byte of wPrefix
@@ -169,7 +169,7 @@ def UartSendCmd():
     #print(cmd)
     
     CMD = Cmd_Packet() #Reset the CMD packet
-    return Rx_Cmd()
+    return Rx_Cmd(Timeout = timeout)
 
 def Rx_CMD_Process(flag):
     checksum = 0
@@ -575,6 +575,24 @@ def CleanUser(UserID, DevAddress = 0):
             return XG_ERR_INVALID_ID
     print("Faild to Delected User")
     return XG_ERR_FAIL
+
+#*********************************************
+#Function: Delete all registered users
+#DevAddress: Device ID, default 0
+#Return:
+#   XG_ERR_SUCCESS : Deletion Successful
+#   XG_ERR_FAIL : Deletion Failed
+#*********************************************
+def CleanAllUser(DevAddress = 0):
+    CMD.bCmd = XG_CMD_CLEAR_ALL_ENROLL
+    CMD.bAddress = DevAddress
+    ret = UartSendCmd(timeout = 5)
+    if ret == XG_ERR_SUCCESS:
+        if RSP.bData[0] == XG_ERR_SUCCESS:
+            print("All User is cleaned")
+    print("Fail to clear")
+    return XG_ERR_FAIL
+
 '''
 #*********************************************
 #Function: Get empty ID, which is an unregistered ID
@@ -803,53 +821,7 @@ def GetIDEnroll(UserID):
             return 0
     return 0
 
-#*********************************************
-#Function: Delete a registered user
-#UserID: User ID to be deleted
-#Return:
-#   XG_ERR_SUCCESS : Deletion Successful
-#   XG_ERR_FAIL : Deletion Failed
-#   XG_ERR_NO_USER : No such user
-#*********************************************
-def CleanUser(UserID):
-    ret = 0
-    bData = [0] * 16
 
-    bData[0] = UserID & 0xFF
-    bData[1] = (UserID >> 8) & 0xFF
-    SendPack(XG_CMD_DELETE_USER, bData, 2)
-    gUartByte = 0  # Prepare to receive data
-    ret = RecvPack(None, bData, 1000)
-    if ret == XG_ERR_SUCCESS:
-        if bData[0] == XG_ERR_SUCCESS:
-            return XG_ERR_SUCCESS
-        else:
-            return bData[1]
-    return XG_ERR_FAIL
-
-#*********************************************
-#Function: Delete all registered users
-#Return:
-#   XG_ERR_SUCCESS : Deletion Successful
-#   XG_ERR_FAIL : Deletion Failed
-#*********************************************
-def CleanAllUser():
-    ret = 0
-    UserNum = 0
-    UserMax = 0
-    ret = GetEnrollInfo(UserNum, UserMax)
-    if ret == XG_ERR_SUCCESS:
-        timeout = 1000 + UserNum * 300
-        bData = [0] * 16
-        SendPack(XG_CMD_CLEAR_ALL_ENROLL, None, 0)
-        gUartByte = 0  # Prepare to receive data
-        ret = RecvPack(None, bData, timeout)
-        if ret == XG_ERR_SUCCESS:
-            if bData[0] == XG_ERR_SUCCESS:
-                return XG_ERR_SUCCESS
-            else:
-                return bData[1]
-    return XG_ERR_FAIL
 
 '''
 def main():
