@@ -771,7 +771,7 @@ def GetEnrollInfo(DevAddress = 0):
 #XG_ERR_FAIL: Fail to get user information
 #*********************************************
 def GetIDEnroll(UserID, DevAddress = 0):
-    CMD.bCmd = XG_CMD_GET_EMPTY_ID
+    CMD.bCmd = XG_CMD_GET_ID_INFO
     CMD.bDataLen = 0x04
     CMD.bData[0] = UserID & 0xFF
     CMD.bData[1] = (UserID >> 8) & 0xFF
