@@ -96,7 +96,7 @@ cmd_test = [0xBB, 0xAA, 0x00, 0x01, 0x00, 0x08, 0x30, 0x30, 0x30, 0x30, 0x30, 0x
 #*********************************************
 ser = serial.Serial(
     ser_com, 
-    baudrate = Baudrate[4],
+    baudrate = Baudrate[3],
     rtscts=False,
     dsrdtr=False,
     timeout=1
