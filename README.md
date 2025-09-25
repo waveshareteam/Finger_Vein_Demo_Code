@@ -1,50 +1,59 @@
-# Raspberry Pi Serial Communication Project
+#中文
+##支持主板
+###树莓派 
+####关闭调试串口，并开启硬件串口
+'''
+sudo raspi-config
+'''
+选择Inteface Options -> Serial port , 保持Login shell disabled 和hardware serail enable
 
-This project provides a simple framework for serial communication using a Raspberry Pi. It allows users to send and receive data over a serial connection, making it suitable for various applications such as interfacing with sensors, microcontrollers, or other devices.
+###RDK 主板
+串口已经默认开启，不需要操作配置
 
-## Project Structure
+##安装serial库
+'''
+sudo apt-get -y install python3-serial
+sudo apt-get -y install python-serial
 
-```
-raspberry-pi-serial-comm
-├── src
-│   ├── main.py          # Entry point of the application
-│   ├── serial_comm.py   # Serial communication management
-│   └── utils
-│       └── __init__.py  # Utility functions and constants
-├── requirements.txt      # Project dependencies
-├── .gitignore            # Files and directories to ignore by Git
-└── README.md             # Project documentation
-```
+##下载程序
+'''
+git clone https://github.com/waveshareteam/Finger_Vein_Demo_Code
+'''
+##运行程序
+'''
+cd Finger_Vein_Demo_Code/
+sudo python3 main.py
+'''
+##文件结构说明
+main.py: 主文件。 包含所有测试函数。 用户可以在main（）中根据自己的测试需求，调用函数测试模组
+serial_comm.py: 串口调用函数，根据系统信息，自动获取串口接口，用户不需要操作
 
-## Setup Instructions
+#English
+##Supported Board
+###Raspberry Pi
+####Setup
+'''
+sudo raspi-config
+'''
+Select Inteface Options -> Serial port, Make sure that Login shell disabled and hardware serail enable
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd raspberry-pi-serial-comm
-   ```
+###RDK Board
+Serial port is enabled by default, do not need to operated
 
-2. **Install dependencies:**
-   Make sure you have Python 3 and pip installed. Then run:
-   ```bash
-   pip install -r requirements.txt
-   ```
+##Install serial libraries
+'''
+sudo apt-get -y install python3-serial
+sudo apt-get -y install python-serial
 
-## Usage
-
-To run the application, execute the following command:
-```bash
-python src/main.py
-```
-
-## Serial Communication
-
-The `SerialComm` class in `serial_comm.py` handles all serial communication tasks. You can open a connection, send data, and receive data using its methods.
-
-## Contributing
-
-Feel free to submit issues or pull requests for improvements or bug fixes.
-
-## License
-
-This project is licensed under the MIT License. See the LICENSE file for more details.
+##Download Examples
+'''
+git clone https://github.com/waveshareteam/Finger_Vein_Demo_Code
+'''
+##Run the code
+'''
+cd Finger_Vein_Demo_Code/
+sudo python3 main.py
+'''
+##File structure
+main.py: Main file that includes all the functions for testing finger vein module, You can call the functions in main() to test the module.
+serial_comm.py: Serial function, it will set the realted com port according to the board information. User do not need to operate it.

@@ -1,10 +1,7 @@
 import serial
 import time
-import struct
 import threading
-import queue
-
-rx_queue = queue.Queue()
+import serial_comm
 
 PREFIX_CODE = 0xAABB  # Prefix code 0xAABB in little-endian format
 bAddress = 0x00  #Device address
@@ -33,6 +30,7 @@ XG_CMD_GET_ENROLL_INFO = 0x14           # Get the number of registered users and
 XG_CMD_GET_ID_INFO = 0x15               # Get specified ID registration information
 XG_CMD_ENROLL = 0x16                    # Fingerprint ID registration
 XG_CMD_VERIFY = 0x17                    # 1:1 verification or 1:N identification
+#** Reserved
 XG_CMD_READ_DATA = 0x20                 # Read data from the device
 XG_CMD_WRITE_DATA = 0x21                # Write data to the device
 XG_CMD_READ_ENROLL = 0x22               # Read fingerprint ID registration data
@@ -85,12 +83,14 @@ XG_ERR_BREAK_CARD = 0x17                # Card swipe interrupted
 XG_INPUT_FINGER = 0x20                  # Please place your finger
 XG_RELEASE_FINGER = 0x21                # Please lift your finger
 
-ser_com = "/dev/ttyS1"
+ser_com = serial_comm.get_serial_port()
+
 # Command Buff
 cmd = [0x00] * 24
 rsp = [0x00] * 24
+
 Baudrate = {0:9600, 1:19200, 2:38400, 3:57600, 4:115200}
-Devpassword ='waveshare075'
+Devpassword ='00000000'
 cmd_test = [0xBB, 0xAA, 0x00, 0x01, 0x00, 0x08, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x00, 0x00, 0x00, 0x00
 , 0x00, 0x00, 0x00, 0x00, 0xee, 0x02]
 #*********************************************
@@ -196,7 +196,7 @@ def Rx_Cmd(timeout = 3):
         try:
             if ser.inWaiting():
                 rsp = ser.read(24)
-                print("Received response:", [hex(x) for x in rsp])
+                #print("Received response:", [hex(x) for x in rsp])
                 if rsp[23] != 0x00 and rsp[22] !=0x00:
                     checksum = 0
                     Rx_CMD_Process(1)
@@ -211,8 +211,6 @@ def Rx_Cmd(timeout = 3):
                     else:
                         print("Checksum error")
                         return XG_ERR_DATA
-        except queue.Empty:
-            continue
         except Exception as e:
             print("Error reading from serial port:", e)
             return XG_ERR_COM
@@ -300,9 +298,9 @@ def GetDevSetting(DevAddress = 0):
             print(f"Device Timeout: {DevTimeout} seconds")
             print(f"Device Duplicate Check: {'Enabled' if DevDupCheck else 'Disabled'}")
             print(f"Device Same Finger Check: {'Enabled' if DevSameFingerCheck else 'Disabled'}")
-            return XG_ERR_SUCCESS
+            return XG_ERR_SUCCESS, RSP.bData
     else:
-            return RSP.bData[1]
+            return XG_ERR_FAIL, RSP.bData
 
 
 #*********************************************
@@ -537,15 +535,20 @@ def RebootDev(DevAddress = 0):
 #   1 : Finger detected
 #   0 : No finger detected or error
 #*********************************************
-def CheckFinger():
-    CMD.bCmd
+def CheckFinger(DevAddress = 0):
+    CMD.bCmd = XG_CMD_FINGER_STATUS
+    CMD.bAddress = DevAddress
+    print("Please Put you finger to the scanner in 3 seconds")
+    time.sleep(3)
     ret = UartSendCmd()
     if ret == XG_ERR_SUCCESS:
         if RSP.bData[0] == XG_ERR_SUCCESS:
-            if RSP.bDataP[1] == 1:
+            if RSP.bData[1] == 1:
                 print("Finger is detected properly")
-                return RSP.bData[1]  # 1: finger detected, 0: no finger
-    print("Finger isn't detected or do not put properly, please try it again")
+            else:
+                print("Finger isn't detected or do not put properly, please try it again")
+            return RSP.bData[1]  # 1: finger detected, 0: no finger
+    print("Faild to check finger status, please try it again")
     return 0
 
 #*********************************************
@@ -631,50 +634,50 @@ def GetEmptyID(StartID = 0, EndID = 100, DevAddress = 0):
 #*********************************************
 #Function：Verify user fingerprint and get the returned user ID
 #DevAddress: Device ID, default 0
-#pUserID: Array to receive the verified user ID, if keep default the ID 0, 
-#         it will verity in 1:N mode., otherwise, it verity in 1:1 mode
-#Group_ID： Group ID, ID = 0 means do not create group
-#Num: The number of ID which is going to verity
+#UserID: Array to receive the verified user ID, if keep default the ID 0, 
+#         it will verify in 1:N mode., otherwise, it verify in 1:1 mode
 #Return:
 #   XG_ERR_SUCCESS : Verification Successful
 #   XG_ERR_FAIL : Verification Failed
 #   XG_ERR_NO_USER : No such user
 #*********************************************
-def VerifyUser(pUserID = 0, DevAddress = 0, Group_ID = 0, Num = 0):
+def VerifyUser(UserID = 0, DevAddress = 0):
+    ret, Data = GetDevSetting()
     CMD.bCmd = XG_CMD_VERIFY
     CMD.bAddress = DevAddress
     CMD.bDataLen = 0x04
-    if pUserID is not None:
-        RSP.bData[0] = pUserID & 0xFF
-        RSP.bData[1] = (pUserID >> 8) & 0xFF
-        RSP.bData[2] = (pUserID >> 18) & 0xFF
-        RSP.bData[3] = (pUserID >> 24) & 0xFF 
-        RSP.bData[4] = Group_ID
-        RSP.bData[5] = Num #The number of ID to continue verity
-    ret = UartSendCmd()
+    if ret == XG_ERR_SUCCESS:
+        time_out = Data[6]
+        print("timeout:", time_out)
+    #if UserID is not None:
+    CMD.bData[0] = UserID & 0xFF
+    CMD.bData[1] = (UserID >> 8) & 0xFF
+    CMD.bData[2] = (UserID >> 18) & 0xFF
+    CMD.bData[3] = (UserID >> 24) & 0xFF 
+    #CMD.bData[4] = Group_ID
+    #CMD.bData[5] = Num #The number of ID to continue verify
+    print("Please put your finger to the scanner to verify")
+    ret = UartSendCmd(time_out)
     while True:
-        if ret != XG_ERR_SUCCESS:
-            print("VerifyUser RecvPack error:", ret)
-            break
-        if RSP.bData[0] == XG_ERR_SUCCESS:
-            pID = RSP.bData[1] + (RSP.bData[2] << 8) + (RSP.bData[3] << 16) + (RSP.bData[3] << 24)
-            print("The User: %d is detected" % (pID))
-            return XG_ERR_SUCCESS
-        elif RSP.bData[0] == XG_INPUT_FINGER:
-            print("Please put your finger")
-            continue
-        elif RSP.bData[0] == XG_RELEASE_FINGER:
-            print("Please release your finger")
-            continue
-        else:
-            ret = RSP.bData[1]
-            if ret == XG_ERR_NO_VEIN:
-                print("No finger vein detected, please try again")
+        if ret == XG_ERR_SUCCESS:
+            if RSP.bData[0] == XG_ERR_SUCCESS:
+                pID = RSP.bData[1] + (RSP.bData[2] << 8) + (RSP.bData[3] << 16) + (RSP.bData[3] << 24)
+                print("The User: %d is detected" % (pID))
+                return XG_ERR_SUCCESS
+            elif RSP.bData[0] == XG_INPUT_FINGER:
+                print("Please put your finger")
+            elif RSP.bData[0] == XG_RELEASE_FINGER:
+                print("Please release your finger") 
             else:
-                print("Verification error:", ret)
-            break
-        ret = Rx_Cmd()
-    return ret
+                if RSP.bData[1] == XG_ERR_NO_VEIN:
+                    print("No finger vein detected, please try again")
+                else:
+                    print("Faild to Verify finger.")
+                    break
+        else:
+            print("Verification error:", RSP.bData[1])
+            return XG_ERR_FAIL
+        ret = Rx_Cmd(time_out)
 
 #*********************************************
 #Function: Register a new user fingerprint
@@ -800,20 +803,15 @@ def main():
     #SetDevCheckFingerTimeout(7)
     #SetDevDupCheck(0)
     #SetDevSameFingerCheck(0)
-    #SET_Password('waveshare0755')
-    Check_Password('123445906')
-    Check_Password('12344')
-    Check_Password('1234459069jbnskdfwljfwjewer')
-    Check_Password('waveshare075')
-    Check_Password('waveshare0755')
-    GetEnrollInfo()
-    GetIDEnroll(1)
-    GetEmptyID()
-    EnrollUser(GetEmptyID())
-    VerifyUser(pUserID=0)
+    #GetEnrollInfo()
+    #GetIDEnroll(1)
+    #GetEmptyID()
+    #EnrollUser(GetEmptyID())
+    #VerifyUser()
+    #CleanAllUser()
     #RebootDev()
-    CheckFinger()
-    GetDevSetting()
+    #CheckFinger()
+    #GetDevSetting()
     CloseConnectDev()
     #time.sleep(2)
 if __name__ == "__main__":
