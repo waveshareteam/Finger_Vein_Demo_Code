@@ -54,10 +54,11 @@ def get_board_info():
     rdk_pattern = r'\[Hardware Model\]:\s*\n\s*([^\(]+)\s*\(Board Id = (\d+)\)'
     match = re.search(rdk_pattern, result, re.MULTILINE)
     if match:
-        board_info['type'] ='RDK Board'
+        board_info['type'] ='RDK'
         full_mode = match.group(1).strip()
         board_info['model'] = extract_board_identifier(full_mode)
         board_info['revision']  = match.group(2).strip()
+        return board_info
     else:
         print("Unkonw Device, only support Raspberry Pi board or RDK Board")
         return 0
