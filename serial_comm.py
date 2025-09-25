@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 
 def extract_board_identifier(full_model):
     model_rules = [
@@ -41,6 +42,26 @@ def get_board_info():
                 if rev_match:
                     board_info['revision'] = rev_match.group(1).strip()
                 return board_info
+    ret = subprocess.run(
+                            ["sudo","rdkos_info"], 
+                            stdout=subprocess.PIPE, 
+                            stderr=subprocess.PIPE, 
+                            text=True, 
+                            check=True,
+                            timeout=10
+                            )
+    result = ret.stdout
+    rdk_pattern = r'\[Hardware Model\]:\s*\n\s*([^\(]+)\s*\(Board Id = (\d+)\)'
+    match = re.search(rdk_pattern, result, re.MULTILINE)
+    if match:
+        board_info['type'] ='RDK Board'
+        full_mode = match.group(1).strip()
+        board_info['model'] = extract_board_identifier(full_mode)
+        board_info['revision']  = match.group(2).strip()
+    else:
+        print("Unkonw Device, only support Raspberry Pi board or RDK Board")
+        return 0
+    
     
 
 def get_serial_port():
@@ -75,3 +96,4 @@ def get_serial_port():
     return serial_map[board['type']][board['model']]
 
 #print(get_serial_port())
+#get_board_info()

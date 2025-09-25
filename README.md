@@ -7,7 +7,7 @@ sudo raspi-config
 `
 选择Inteface Options -> Serial port , 保持Login shell disabled 和hardware serail enable
 
-###RDK 主板
+### RDK 主板
 串口已经默认开启，不需要操作配置
 
 ## 安装serial库
